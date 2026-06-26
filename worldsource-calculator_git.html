@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Worldsource Statement Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1B2B4B;--accent:#2563EB;--al:#EFF6FF;
+  --green:#059669;--gl:#ECFDF5;--red:#DC2626;
+  --border:#D1D9E0;--text:#1A202C;--muted:#6B7280;--bg:#F0F4F8;
+  --radius:8px;--mono:'JetBrains Mono','Fira Mono',monospace;
+}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{background:var(--navy);padding:16px 28px;display:flex;align-items:center;gap:14px;border-bottom:3px solid var(--accent)}
+.logo{width:32px;height:32px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+header h1{font-size:16px;font-weight:600;color:#fff}
+header p{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px}
+main{max-width:1020px;margin:0 auto;padding:28px 20px}
+.drop-zone{border:2px dashed var(--border);border-radius:12px;background:#fff;padding:40px 28px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;margin-bottom:22px}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:var(--al)}
+.drop-zone.loaded{border-style:solid;border-color:var(--green);background:var(--gl)}
+.drop-icon{font-size:36px;margin-bottom:10px}
+.drop-title{font-size:15px;font-weight:600;margin-bottom:5px}
+.drop-sub{font-size:13px;color:var(--muted);max-width:480px;margin:0 auto}
+.drop-btn{display:inline-block;margin-top:12px;padding:8px 20px;background:var(--accent);color:#fff;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:none}
+#file-input{display:none}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;justify-content:center}
+.chip{background:#fff;border:1px solid var(--border);border-radius:20px;padding:3px 11px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.chip-x{cursor:pointer;font-size:14px}.chip-x:hover{color:var(--red)}
+.prog-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;display:none}
+.prog-wrap.show{display:block}
+.prog-label{font-size:13px;color:var(--muted);margin-bottom:8px}
+.prog-bg{background:#E5E7EB;border-radius:4px;height:6px}
+.prog-bar{background:var(--accent);height:6px;border-radius:4px;width:0%;transition:width .3s}
+.prog-note{font-size:11px;color:var(--muted);margin-top:5px}
+.account-card{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:20px;overflow:hidden}
+.acct-head{background:var(--navy);padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+.acct-name{font-size:14px;font-weight:600;color:#fff}
+.acct-meta{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px}
+.badge{font-size:10px;font-weight:600;padding:2px 9px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff}
+.sum-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.sum-cell{background:#fff;padding:12px 15px}
+.sum-cell .lbl{font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em}
+.sum-cell .val{font-size:18px;font-weight:600;font-family:var(--mono)}
+.sum-cell .frm{font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--mono)}
+.pos{color:var(--green)}.neg{color:var(--red)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:#F7F9FC;padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}
+th.r,td.r{text-align:right}
+tbody tr{border-bottom:1px solid #F0F4F8}
+tbody tr:hover{background:#F7F9FC}
+tbody td{padding:8px 12px}
+td.fn{font-weight:500;max-width:220px}
+td.mn{font-family:var(--mono);font-size:11px}
+tfoot td{padding:8px 12px;font-weight:600;background:#F0F4F8;border-top:2px solid var(--border);font-family:var(--mono);font-size:11px;text-align:right}
+tfoot td:first-child{text-align:left;font-family:system-ui;font-size:12px;font-weight:600}
+.fbar{background:#F7F9FC;border-top:1px solid var(--border);padding:10px 16px;font-size:11px;color:var(--muted);font-family:var(--mono)}
+.fbar strong{color:#4A5568}
+.cash-note{padding:12px 16px;font-size:12px;color:var(--muted);font-style:italic}
+.empty{text-align:center;padding:52px 20px;color:var(--muted)}
+.empty .big{font-size:42px;margin-bottom:10px}
+.empty p{font-size:14px;max-width:420px;margin:0 auto;line-height:1.5}
+.actions{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-lbl{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.btn-row{display:flex;gap:8px}
+.btn{padding:7px 14px;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--muted);transition:border-color .1s,color .1s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.primary:hover{background:#1D4ED8}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">W</div>
+  <div>
+    <h1>Statement Calculator</h1>
+    <p>Worldsource Financial Management — parse, calculate, annotate PDF</p>
+  </div>
+</header>
+<main>
+  <div class="drop-zone" id="dz">
+    <div class="drop-icon">📄</div>
+    <div class="drop-title">Drop a Worldsource PDF statement here</div>
+    <div class="drop-sub">Calculates % gain for every holding on the Financial Snapshot pages and writes it onto the PDF as a new column. Everything runs in your browser.</div>
+    <button class="drop-btn" onclick="document.getElementById('file-input').click()">Choose file</button>
+    <input type="file" id="file-input" accept=".pdf" multiple>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div class="prog-wrap" id="prog">
+    <div class="prog-label" id="prog-label">Parsing…</div>
+    <div class="prog-bg"><div class="prog-bar" id="prog-bar"></div></div>
+    <div class="prog-note" id="prog-note"></div>
+  </div>
+  <div id="results"></div>
+</main>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// Confirmed from pdfplumber analysis:
+// Snapshot page layout (landscape 792×612):
+//   Market Value column right edge: x=749.9
+//   Page right edge: x=792
+//   → We add % Gain column header at x=755 (left-aligned label) right-aligned values to x=789
+//   Row y positions (pdfplumber top-from-top coords):
+//     Section header row:        201.8 (first) or 252.0 (second section)
+//     First holding row:         215.3 (after first header) or 265.5 (after second header)
+//     Section subtotal row:      229.4 or 279.6
+//     Total Portfolio row:       257.4 or 307.7
+//   Page height: 612
+//   Convert pdfplumber top → pdf-lib y:  pdfY = 612 - plumberTop
+
+const PAGE_H = 612;
+const PCT_COL_X = 753;   // left edge of our new % Gain column
+const PCT_VAL_RIGHT = 789; // right-align values here
+
+let loadedFiles = {};
+
+// ── Drop zone
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); handleFiles(e.dataTransfer.files); });
+document.getElementById('file-input').addEventListener('change', e => handleFiles(e.target.files));
+
+function handleFiles(list) {
+  Array.from(list).forEach(f => {
+    if (!f.name.endsWith('.pdf') || loadedFiles[f.name]) return;
+    loadedFiles[f.name] = null;
+    addChip(f.name);
+    processFile(f);
+  });
+  dz.classList.add('loaded');
+}
+
+function addChip(name) {
+  const c = document.createElement('div');
+  c.className = 'chip'; c.id = 'chip-' + name.replace(/\./g,'_');
+  c.innerHTML = `<span>📄 ${name}</span><span class="chip-x" data-name="${name}" onclick="removeFile(this)">×</span>`;
+  document.getElementById('chips').appendChild(c);
+}
+
+function removeFile(el) {
+  const name = el.dataset.name;
+  delete loadedFiles[name];
+  document.getElementById('chip-' + name.replace(/\./g,'_'))?.remove();
+  if (!Object.keys(loadedFiles).length) dz.classList.remove('loaded');
+  render();
+}
+
+function setprog(pct, label, note) {
+  const w = document.getElementById('prog');
+  if (pct === null) { w.classList.remove('show'); return; }
+  w.classList.add('show');
+  document.getElementById('prog-bar').style.width = pct + '%';
+  document.getElementById('prog-label').textContent = label;
+  document.getElementById('prog-note').textContent = note || '';
+}
+
+// ── Process PDF
+async function processFile(file) {
+  setprog(5, 'Loading PDF…', file.name);
+  const rawBuf = await file.arrayBuffer();
+  const pdfBytes = new Uint8Array(rawBuf);
+
+  setprog(15, 'Extracting text…', file.name);
+  const pdf = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise;
+
+  const pageData = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    setprog(15 + (p / pdf.numPages) * 60, `Reading page ${p} of ${pdf.numPages}…`, file.name);
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const items = content.items.map(i => ({
+      str: i.str,
+      x: i.transform[4],
+      y: i.transform[5],           // pdf-lib y (bottom origin)
+      top: PAGE_H - i.transform[5] // pdfplumber-style (top origin)
+    }));
+    const sorted = [...items].sort((a, b) => {
+      const dy = a.top - b.top;
+      return Math.abs(dy) > 3 ? dy : a.x - b.x;
+    });
+    pageData.push({ num: p, text: sorted.map(i => i.str).join(' '), items: sorted });
+  }
+
+  setprog(80, 'Parsing accounts…', file.name);
+  const accounts = parseAccounts(pageData);
+
+  setprog(95, 'Ready.', '');
+  loadedFiles[file.name] = { pdfBytes, accounts, pageData };
+  setprog(null);
+  render();
+}
+
+function money(s) {
+  if (s == null) return null;
+  const n = parseFloat(String(s).replace(/[$,\s\u00a0]/g,'').replace(/[\u2212\u2013−–]/g,'-'));
+  return isNaN(n) ? null : n;
+}
+
+// ── Parse accounts: pair snap+perf pages by account number
+function parseAccounts(pageData) {
+  const byAcct = {};
+  pageData.forEach(pg => {
+    const m = pg.text.match(/Account\s*Number[:\s]*([\d\u2212\-]+(?:[A-Z\u2212\-][\w]+)*[^\s,]*)/);
+    if (!m) return;
+    const acctNum = m[1].replace(/[\u2212−]/g,'-').trim();
+    if (!byAcct[acctNum]) byAcct[acctNum] = {};
+    if (/Financial Snapshot/i.test(pg.text))  byAcct[acctNum].snap = pg;
+    if (/Performance Summary/i.test(pg.text)) byAcct[acctNum].perf = pg;
+  });
+
+  return Object.entries(byAcct).filter(([acctNum]) => {
+    // Skip partial/phantom account numbers (must contain a dash to be valid e.g. 757-001A-1)
+    return acctNum.includes('-') && acctNum.length > 5;
+  }).map(([acctNum, pgs]) => {
+    const src = pgs.snap || pgs.perf;
+    const nameM = src?.text.match(/Client\s*Name[:\s]+([A-Z][A-Z\s]{2,30}?)(?=\s*Account)/);
+    const clientName = nameM ? nameM[1].trim() : 'Unknown';
+    const txt = src?.text || '';
+    let acctType = 'Account';
+    if (/TFSA/i.test(txt))                      acctType = 'TFSA';
+    else if (/Spousal\s*RRSP/i.test(txt))        acctType = 'Spousal RRSP';
+    else if (/\bRRSP\b/i.test(txt))              acctType = 'RRSP';
+    else if (/FIRST\s*HOME|FHSA/i.test(txt))     acctType = 'FHSA';
+    else if (/CASH\s*ACCOUNT/i.test(txt))        acctType = 'Cash Account';
+
+    // Parse snapshot holdings: each investment row has Book Value and Market Value
+    const snapHoldings = pgs.snap ? parseSnapshotHoldings(pgs.snap) : [];
+
+    return { acctNum, clientName, acctType, snapPage: pgs.snap, perfPage: pgs.perf, snapHoldings };
+  });
+}
+
+// Parse investment rows from a Financial Snapshot page
+// We detect rows by finding items near x=160 (symbol column) between y=200 and y=290
+// Each holding row has: symbol(~160), name(~312), netInvested(~539), bookVal(~644), marketVal(~749)
+function parseSnapshotHoldings(pg) {
+  const holdings = [];
+
+  // Find rows that have a marketVal (right-most number column, x0 ~714-725)
+  // Group items by row (within 2pt y tolerance)
+  const rows = {};
+  pg.items.forEach(item => {
+    if (item.top < 200 || item.top > 320) return;
+    const rowKey = Math.round(item.top / 2) * 2; // bucket to 2pt
+    if (!rows[rowKey]) rows[rowKey] = [];
+    rows[rowKey].push(item);
+  });
+
+  // Section tracking
+  let currentSection = '';
+  const SECTION_NAMES = /^(BALANCED|CANADIAN\s+EQUITY|FOREIGN\s+EQUITY|US\s+EQUITY|FIXED\s+INCOME|ALTERNATIVE|CASH\s+AND\s+CASH\s+EQUIVALENTS|CASH\s+AND)/i;
+
+  Object.entries(rows)
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .forEach(([rowKeyStr, items]) => {
+      const rowTop = Number(rowKeyStr);
+      const rowText = items.map(i => i.str).join(' ');
+
+      // Detect section headers
+      if (SECTION_NAMES.test(rowText.trim())) {
+        const sm = rowText.trim().match(SECTION_NAMES);
+        if (sm) currentSection = sm[1].replace(/\s+/g,' ').toUpperCase();
+        return;
+      }
+
+      // Skip header rows (contain "Symbol", "Net", "Invested", "Book", "Market")
+      if (/Symbol|Net\s+Invested|Book\s+Value|Market\s+Value/i.test(rowText)) return;
+
+      // Skip totals rows
+      if (/^TOTAL|^Total\s+Portfolio/i.test(rowText.trim())) return;
+
+      // Skip the section subtotal rows (e.g. "BALANCED $..." without a fund name before it)
+      if (/^(BALANCED|CANADIAN|FOREIGN|US|FIXED)\s+\$/.test(rowText.trim())) return;
+
+      // Find numbers in the right columns: bookVal ~x=613-644, marketVal ~x=718-749
+      const bookItems  = items.filter(i => i.x >= 600 && i.x <= 650);
+      const mktItems   = items.filter(i => i.x >= 705 && i.x <= 755);
+
+      if (!bookItems.length || !mktItems.length) return;
+
+      // Reconstruct multi-word numbers (e.g. "−" and "1,572.32" are separate items)
+      const bookStr  = bookItems.map(i => i.str).join('');
+      const mktStr   = mktItems.map(i => i.str).join('');
+      const bookVal  = money(bookStr);
+      const mktVal   = money(mktStr);
+
+      if (bookVal === null || mktVal === null) return;
+      if (bookVal === 0 && mktVal === 0) return; // skip zero rows like CASH 0.00
+
+      // Build fund name from items left of x=500
+      const nameItems = items.filter(i => i.x < 500 && i.x > 140);
+      const name = nameItems.map(i => i.str).join(' ').replace(/\s+/g,' ').trim();
+      if (!name || name.length < 2) return;
+
+      // Calc % gain: (Market - Book) / Book * 100
+      const gain    = mktVal - bookVal;
+      const pctGain = bookVal !== 0 ? (gain / bookVal) * 100 : null;
+
+      holdings.push({ name, section: currentSection, bookVal, mktVal, gain, pctGain, rowTop });
+    });
+
+  return holdings;
+}
+
+// ── Helpers
+function fmt(n) {
+  if (n == null || isNaN(n)) return '—';
+  const sign = n < 0 ? '-' : '';
+  return sign + '$' + Math.abs(n).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtP(n) {
+  if (n == null || isNaN(n)) return '—';
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+}
+
+// Normalise fund names: strip symbol prefix duplication and unicode dashes
+function normName(s) {
+  if (!s) return '';
+  s = s.replace(/[\u2212\u2013\u2014]/g, '-').replace(/\s+/g, ' ').trim();
+  // Strip leading "SYM SYM " pattern (symbol repeated)
+  const m = s.match(/^([A-Z0-9]{5,8})\s+\1\s+(.+)$/);
+  if (m) return m[2].trim();
+  return s;
+}
+
+// Extract statement date from pageData and store on fd
+function extractStmtDate(fd) {
+  if (fd.stmtDate) return;
+  for (const pg of fd.pageData) {
+    const m = pg.text.match(/As\s+Of\s+([A-Z][a-z]+\.?\s+\d{1,2},?\s*\d{4})/i);
+    if (m) {
+      const raw = m[1].replace(/\./g,'').trim();
+      // Parse as UTC to avoid timezone day-shift issues
+      const utc = new Date(raw + ' UTC');
+      if (!isNaN(utc)) {
+        fd.stmtDate = utc.getTime();
+        fd.stmtLabel = utc.toLocaleDateString('en-CA', {year:'numeric', month:'short', timeZone:'UTC'});
+        return;
+      }
+    }
+  }
+  fd.stmtDate = 0;
+  fd.stmtLabel = 'Unknown';
+}
+
+// Sort files oldest-first — extract dates first so sort has values to compare
+function sortedFiles() {
+  const files = Object.values(loadedFiles).filter(Boolean);
+  files.forEach(extractStmtDate); // must run before sort
+  return files.sort((a, b) => (a.stmtDate || 0) - (b.stmtDate || 0));
+}
+
+// Build merged view: per account, per holding — starting value, current value, total gain
+function buildMergedView() {
+  const files = sortedFiles();
+  if (!files.length) return null;
+  files.forEach(extractStmtDate);
+
+  const earliest = files[0];
+  const latest   = files[files.length - 1];
+
+  // All unique account numbers across all files
+  const allAcctNums = [...new Set(files.flatMap(fd => fd.accounts.map(a => a.acctNum)))];
+
+  const accts = allAcctNums.map(acctNum => {
+    const firstAcct = files.map(fd => fd.accounts.find(a => a.acctNum === acctNum)).find(Boolean);
+    if (!firstAcct) return null;
+
+    // All unique normalised holding names across all files for this account
+    const allHoldingNames = [...new Set(
+      files.flatMap(fd => {
+        const a = fd.accounts.find(a => a.acctNum === acctNum);
+        return a ? a.snapHoldings.filter(h => h.bookVal !== 0 || h.mktVal !== 0).map(h => normName(h.name)) : [];
+      })
+    )];
+
+    const holdings = allHoldingNames.map(normHoldingName => {
+      // Search all files for first and last occurrence of this holding
+      const allOccurrences = files.map(fd => {
+        const a = fd.accounts.find(a => a.acctNum === acctNum);
+        return a?.snapHoldings.find(h => normName(h.name) === normHoldingName) || null;
+      });
+
+      const firstOccurrence = allOccurrences.find(h => h != null);
+      const lastOccurrence  = [...allOccurrences].reverse().find(h => h != null);
+      const inEarliest = allOccurrences[0] != null;
+      const inLatest   = allOccurrences[allOccurrences.length - 1] != null;
+
+      const startVal   = firstOccurrence?.mktVal ?? null;
+      const currentVal = lastOccurrence?.mktVal ?? null;
+      const totalGain  = (startVal != null && currentVal != null) ? currentVal - startVal : null;
+      const totalPct   = (startVal != null && startVal !== 0 && totalGain != null) ? (totalGain / startVal) * 100 : null;
+
+      // Status: new (not in earliest file), sold (not in latest file), active (both)
+      const status = !inEarliest ? 'new' : !inLatest ? 'sold' : 'active';
+
+      // Find section from any file
+      const section = firstOccurrence?.section || lastOccurrence?.section || '';
+
+      return { name: normHoldingName, section, startVal, currentVal, totalGain, totalPct, status };
+    });
+
+    // Skip pure-cash-only accounts (all holdings are CASH with 0% gain in all periods)
+    const hasInvestments = holdings.some(h => !/^CASH$/i.test(h.name.trim()) || h.totalGain !== 0);
+
+    // Portfolio totals — use startVal/currentVal which are first/last non-null per holding
+    const tStart   = holdings.reduce((s,h) => s + (h.startVal || 0), 0);
+    const tCurrent = holdings.reduce((s,h) => s + (h.currentVal || 0), 0);
+    const tGain    = tCurrent - tStart;
+    const tPct     = tStart !== 0 ? (tGain / tStart) * 100 : null;
+
+    return {
+      acctNum, clientName: firstAcct.clientName, acctType: firstAcct.acctType,
+      holdings, hasInvestments, tStart, tCurrent, tGain, tPct,
+      earliestLabel: earliest.stmtLabel, latestLabel: latest.stmtLabel,
+      multiPeriod: files.length > 1
+    };
+  }).filter(Boolean);
+
+  return { accts, earliestLabel: earliest.stmtLabel, latestLabel: latest.stmtLabel, multiPeriod: files.length > 1 };
+}
+
+// ── Render UI
+function render() {
+  const area = document.getElementById('results');
+  const files = sortedFiles();
+
+  if (!files.length) {
+    area.innerHTML = `<div class="empty"><div class="big">📊</div><p>Drop one or more Worldsource PDFs above. Multiple files will be compared from earliest to latest date automatically.</p></div>`;
+    return;
+  }
+
+  const view = buildMergedView();
+  if (!view) { area.innerHTML = `<div class="empty"><p>Could not parse files.</p></div>`; return; }
+
+  const periodLabel = view.multiPeriod
+    ? `${view.earliestLabel} → ${view.latestLabel}`
+    : view.latestLabel;
+
+  let html = `<div class="actions">
+    <div class="sec-lbl">Results · ${periodLabel}</div>
+    <div class="btn-row">
+      <button class="btn" onclick="exportExcel()">⬇ Export Excel</button>
+    </div>
+  </div>`;
+
+  view.accts.forEach(a => {
+    const startLbl   = view.multiPeriod ? `Starting value (${a.earliestLabel})` : 'Book value';
+    const currentLbl = view.multiPeriod ? `Current value (${a.latestLabel})`    : 'Market value';
+
+    html += `<div class="account-card">
+      <div class="acct-head">
+        <div><div class="acct-name">${a.clientName} — ${a.acctType}</div>
+        <div class="acct-meta">${a.acctNum}</div></div>
+        <div class="badge">${a.holdings.length} holding${a.holdings.length !== 1 ? 's' : ''}</div>
+      </div>`;
+
+    // Summary strip
+    const gc = a.tGain >= 0 ? 'pos' : 'neg';
+    html += `<div class="sum-row">
+      <div class="sum-cell"><div class="lbl">${startLbl}</div><div class="val">${fmt(a.tStart)}</div></div>
+      <div class="sum-cell"><div class="lbl">${currentLbl}</div><div class="val">${fmt(a.tCurrent)}</div></div>
+      <div class="sum-cell"><div class="lbl">Total gain</div><div class="val ${gc}">${fmt(a.tGain)}</div><div class="frm">Current − Starting</div></div>
+      <div class="sum-cell"><div class="lbl">Total return</div><div class="val ${gc}">${fmtP(a.tPct)}</div><div class="frm">(Gain ÷ Starting) × 100</div></div>
+    </div>`;
+
+    if (a.holdings.length) {
+      html += `<div style="overflow-x:auto"><table>
+        <thead><tr>
+          <th>Holding</th>
+          <th>Section</th>
+          <th>Status</th>
+          <th class="r">${startLbl}</th>
+          <th class="r">${currentLbl}</th>
+          <th class="r">Total gain</th>
+          <th class="r">Total return %</th>
+        </tr></thead><tbody>`;
+
+      // Filter out pure cash rows (CASH with no gain across any period)
+      const displayHoldings = a.holdings.filter(h => {
+        if (!/^CASH$/i.test(h.name.trim())) return true;
+        return h.totalGain !== 0 && h.totalGain !== null;
+      });
+
+      displayHoldings.forEach(h => {
+        const hgc = (h.totalGain || 0) >= 0 ? 'pos' : 'neg';
+        const statusBadge = h.status === 'new'  ? `<span style="font-size:10px;color:var(--green);font-weight:600">NEW</span>`
+                          : h.status === 'sold' ? `<span style="font-size:10px;color:var(--red);font-weight:600">SOLD</span>`
+                          : '';
+        html += `<tr>
+          <td class="fn">${h.name}</td>
+          <td style="font-size:10px;color:var(--muted)">${h.section}</td>
+          <td>${statusBadge}</td>
+          <td class="r mn">${fmt(h.startVal)}</td>
+          <td class="r mn">${fmt(h.currentVal)}</td>
+          <td class="r mn ${hgc}">${fmt(h.totalGain)}</td>
+          <td class="r mn ${hgc}" style="font-weight:600">${fmtP(h.totalPct)}</td>
+        </tr>`;
+      });
+
+      html += `</tbody><tfoot><tr>
+        <td colspan="3">Total</td>
+        <td>${fmt(displayHoldings.reduce((s,h)=>s+(h.startVal||0),0))}</td>
+        <td>${fmt(displayHoldings.reduce((s,h)=>s+(h.currentVal||0),0))}</td>
+        <td class="${gc}">${fmt(displayHoldings.reduce((s,h)=>s+(h.totalGain||0),0))}</td>
+        <td class="${gc}" style="font-weight:700">${fmtP(
+          displayHoldings.reduce((s,h)=>s+(h.startVal||0),0) > 0
+            ? displayHoldings.reduce((s,h)=>s+(h.totalGain||0),0) / displayHoldings.reduce((s,h)=>s+(h.startVal||0),0) * 100
+            : null
+        )}</td>
+      </tr></tfoot></table></div>
+      <div class="fbar"><strong>Total gain</strong> = Current value − Starting value &nbsp;·&nbsp; <strong>Return %</strong> = (Gain ÷ Starting) × 100 &nbsp;·&nbsp; Annotated PDF uses latest file only</div>`;
+    } else {
+      html += `<div class="cash-note">Cash-only account — no investment holdings.</div>`;
+    }
+
+    html += `</div>`;
+  });
+
+  area.innerHTML = html;
+}
+render();
+
+// ── Generate annotated PDF
+async function generatePDF() {
+  const btn = document.getElementById('pdf-btn');
+  btn.disabled = true; btn.textContent = 'Generating…';
+  try {
+    for (const [fname, fd] of Object.entries(loadedFiles)) {
+      if (!fd) continue;
+      await annotateAndDownload(fname, fd);
+    }
+  } catch(e) {
+    alert('PDF error: ' + e.message);
+    console.error(e);
+  }
+  btn.disabled = false; btn.textContent = '⬇ Download annotated PDF';
+}
+
+async function annotateAndDownload(fname, fd) {
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const pdfDoc = await PDFDocument.load(fd.pdfBytes);
+  const font    = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontReg = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const pages   = pdfDoc.getPages();
+
+  const C = {
+    green:  rgb(0.02,  0.60, 0.35),
+    red:    rgb(0.80,  0.08, 0.18),
+    ink:    rgb(0.10,  0.17, 0.30),
+    muted:  rgb(0.42,  0.47, 0.53),
+    hilit:  rgb(0.925, 0.95, 1.00),
+    hdr:    rgb(0.14,  0.39, 0.92),
+  };
+
+  fd.accounts.forEach(acct => {
+    if (!acct.snapPage || !acct.snapHoldings.length) return;
+
+    const pageIdx = acct.snapPage.num - 1;
+    const page    = pages[pageIdx];
+    const H       = page.getSize().height; // 612
+
+    // ── Draw column header on each section header row
+    // Section header rows are at plumberTop ≈ 201.8 and 252.0
+    // Find unique header y positions from our holdings (each holding knows its rowTop,
+    // header is ~14pt above the first holding in that section)
+    const sectionHeaderTops = new Set();
+    // Also find the column header rows (the "Symbol / Net Invested / Book Value / Market Value" rows)
+    // These sit at the same y as the section name. We add our header there.
+    // Detect from page items: rows containing both "Book" and "Market" and "Value"
+    const headerRows = [];
+    const rowBuckets = {};
+    acct.snapPage.items.forEach(item => {
+      if (item.top < 195 || item.top > 270) return;
+      const key = Math.round(item.top);
+      if (!rowBuckets[key]) rowBuckets[key] = [];
+      rowBuckets[key].push(item.str);
+    });
+    Object.entries(rowBuckets).forEach(([topStr, words]) => {
+      const joined = words.join(' ');
+      if (/Book/.test(joined) && /Market/.test(joined)) {
+        headerRows.push(Number(topStr));
+      }
+    });
+
+    // Draw "% Gain" column header on every header row found
+    headerRows.forEach(plumberTop => {
+      const pdfY = H - plumberTop + 1;
+      // Light blue background strip behind the new column
+      page.drawRectangle({
+        x: PCT_COL_X - 2, y: pdfY - 9,
+        width: 792 - PCT_COL_X + 2, height: 11,
+        color: C.hilit, opacity: 0.9,
+      });
+      page.drawText('% Gain', {
+        x: PCT_COL_X, y: pdfY - 7,
+        size: 7, font, color: C.hdr,
+      });
+    });
+
+    // ── Draw % gain value on each holding row
+    acct.snapHoldings.forEach(h => {
+      if (h.pctGain === null) return;
+      const pdfY = H - h.rowTop + 1;
+      const color = h.pctGain >= 0 ? C.green : C.red;
+      const label = (h.pctGain >= 0 ? '+' : '') + h.pctGain.toFixed(2) + '%';
+
+      // Background tint
+      page.drawRectangle({
+        x: PCT_COL_X - 2, y: pdfY - 9,
+        width: 792 - PCT_COL_X + 2, height: 11,
+        color: C.hilit, opacity: 0.7,
+      });
+
+      // Right-align the value
+      const approxW = label.length * 4.6; // Helvetica Bold at size 8
+      page.drawText(label, {
+        x: PCT_VAL_RIGHT - approxW,
+        y: pdfY - 7,
+        size: 8, font, color,
+      });
+    });
+
+    // ── Draw % gain on the section subtotal rows and Total Portfolio row
+    // Group holdings by section to get subtotals
+    const bySec = {};
+    acct.snapHoldings.forEach(h => {
+      if (!bySec[h.section]) bySec[h.section] = [];
+      bySec[h.section].push(h);
+    });
+
+    // Find subtotal rows: ~14pt below last holding in each section
+    Object.values(bySec).forEach(secHoldings => {
+      const lastTop = Math.max(...secHoldings.map(h => h.rowTop));
+      const subtotalTop = lastTop + 14.1;
+      const secBook = secHoldings.reduce((s,h) => s + h.bookVal, 0);
+      const secMkt  = secHoldings.reduce((s,h) => s + h.mktVal,  0);
+      const secPct  = secBook !== 0 ? ((secMkt - secBook) / secBook) * 100 : null;
+      if (secPct === null) return;
+
+      const pdfY = H - subtotalTop + 1;
+      const color = secPct >= 0 ? C.green : C.red;
+      const label = (secPct >= 0 ? '+' : '') + secPct.toFixed(2) + '%';
+
+      page.drawRectangle({
+        x: PCT_COL_X - 2, y: pdfY - 9,
+        width: 792 - PCT_COL_X + 2, height: 11,
+        color: C.hilit, opacity: 0.55,
+      });
+      const approxW = label.length * 4.6;
+      page.drawText(label, {
+        x: PCT_VAL_RIGHT - approxW,
+        y: pdfY - 7,
+        size: 8, font, color,
+      });
+    });
+
+    // Total Portfolio row: find "Total Portfolio" items on the page
+    const totalPortItems = acct.snapPage.items.filter(i => i.str === 'Portfolio' && i.top > 240);
+    if (totalPortItems.length) {
+      const totTop = totalPortItems[totalPortItems.length - 1].top;
+      const tBook = acct.snapHoldings.reduce((s,h) => s + h.bookVal, 0);
+      const tMkt  = acct.snapHoldings.reduce((s,h) => s + h.mktVal,  0);
+      const tPct  = tBook !== 0 ? ((tMkt - tBook) / tBook) * 100 : null;
+
+      if (tPct !== null) {
+        const pdfY = H - totTop + 1;
+        const color = tPct >= 0 ? C.green : C.red;
+        const label = (tPct >= 0 ? '+' : '') + tPct.toFixed(2) + '%';
+
+        page.drawRectangle({
+          x: PCT_COL_X - 2, y: pdfY - 9,
+          width: 792 - PCT_COL_X + 2, height: 11,
+          color: C.hilit, opacity: 0.55,
+        });
+        const approxW = label.length * 4.6;
+        page.drawText(label, {
+          x: PCT_VAL_RIGHT - approxW,
+          y: pdfY - 7,
+          size: 8, font, color: color,
+        });
+      }
+    }
+
+    // Small footer stamp
+    page.drawText('% Gain calculated by Worldsource Calculator  ·  (Market − Book) ÷ Book × 100', {
+      x: 42, y: 17, size: 6.5, font: fontReg, color: C.muted, opacity: 0.55,
+    });
+  });
+
+  const outBytes = await pdfDoc.save();
+  const blob = new Blob([outBytes], { type: 'application/pdf' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = fname.replace(/\.pdf$/i, '_calculated.pdf');
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ── Excel export using SheetJS
+// Layout: one row per holding, columns = fields then one column per period
+function exportExcel() {
+  const files = sortedFiles();
+  if (!files.length) return;
+  files.forEach(extractStmtDate);
+
+  const allAcctNums = [...new Set(files.flatMap(fd => fd.accounts.map(a => a.acctNum)))];
+  const periods = files.map(fd => fd.stmtLabel);
+
+  // Build header row:
+  // Account | Holding | Section | Status | [period Market Value]... | Total Gain $ | Total Return % | [period % Gain]...
+  const header = [
+    'Account', 'Holding', 'Section', 'Status',
+    ...periods.map(p => `Market Value (${p})`),
+    'Total Gain $', 'Total Return %',
+    ...periods.map(p => `% Gain (${p})`),
+    ...periods.map(p => `Book Value (${p})`),
+  ];
+
+  const rows = [header];
+
+  allAcctNums.forEach(acctNum => {
+    const firstAcct = files.map(fd => fd.accounts.find(a => a.acctNum === acctNum)).find(Boolean);
+    if (!firstAcct) return;
+
+    // All unique normalised holding names — exclude pure cash (Book=Market, 0 gain across all periods)
+    const allNames = [...new Set(
+      files.flatMap(fd => {
+        const a = fd.accounts.find(a => a.acctNum === acctNum);
+        return a ? a.snapHoldings.map(h => normName(h.name)) : [];
+      })
+    )].filter(name => {
+      // Skip if it's CASH with identical book/market across all periods
+      if (!/^CASH$/i.test(name.trim())) return true;
+      return files.some(fd => {
+        const a = fd.accounts.find(a => a.acctNum === acctNum);
+        const h = a?.snapHoldings.find(h => normName(h.name) === name);
+        return h && Math.abs(h.gain) > 0.001;
+      });
+    });
+
+    if (!allNames.length) return;
+
+    const acctLabel = `${firstAcct.clientName} — ${firstAcct.acctType} (${acctNum})`;
+
+    allNames.forEach(normHoldingName => {
+      const perFile = files.map(fd => {
+        const a = fd.accounts.find(a => a.acctNum === acctNum);
+        return a?.snapHoldings.find(h => normName(h.name) === normHoldingName) || null;
+      });
+
+      const hasFirst = perFile[0] != null;
+      const hasLast  = perFile[perFile.length - 1] != null;
+      const status   = !hasFirst ? 'NEW' : !hasLast ? 'SOLD' : '';
+
+      // Use first non-null as start, last non-null as end
+      const firstVal = perFile.find(h => h != null);
+      const lastVal  = [...perFile].reverse().find(h => h != null);
+      const startMkt = firstVal?.mktVal ?? null;
+      const endMkt   = lastVal?.mktVal ?? null;
+      const totalGain = startMkt != null && endMkt != null ? endMkt - startMkt : null;
+      const totalPct  = startMkt != null && startMkt !== 0 && totalGain != null
+        ? (totalGain / startMkt) * 100 : null;
+
+      const section = perFile.find(Boolean)?.section || '';
+
+      rows.push([
+        acctLabel,
+        normHoldingName,
+        section,
+        status,
+        // Market value per period
+        ...perFile.map(h => h ? h.mktVal : ''),
+        // Total gain and return — plain numbers, formatted below
+        totalGain != null ? parseFloat(totalGain.toFixed(2)) : '',
+        totalPct  != null ? parseFloat(totalPct.toFixed(2)) : '',
+        // % gain per period — plain numbers, formatted below
+        ...perFile.map(h => h && h.pctGain != null ? parseFloat(h.pctGain.toFixed(2)) : ''),
+        // Book value per period
+        ...perFile.map(h => h ? h.bookVal : ''),
+      ]);
+    });
+
+    // Account total row
+    const acctMktPerPeriod = files.map(fd => {
+      const a = fd.accounts.find(a => a.acctNum === acctNum);
+      if (!a) return '';
+      return a.snapHoldings.reduce((s,h) => s + h.mktVal, 0);
+    });
+    const acctStartMkt = acctMktPerPeriod.find(v => typeof v === 'number') ?? null;
+    const acctEndMkt   = [...acctMktPerPeriod].reverse().find(v => typeof v === 'number') ?? null;
+    const acctTotalGain = acctStartMkt != null && acctEndMkt != null ? acctEndMkt - acctStartMkt : null;
+    const acctTotalPct  = acctStartMkt && acctTotalGain != null ? (acctTotalGain / acctStartMkt) * 100 : null;
+
+    rows.push([
+      acctLabel, 'TOTAL', '', '',
+      ...acctMktPerPeriod,
+      acctTotalGain != null ? parseFloat(acctTotalGain.toFixed(2)) : '',
+      acctTotalPct  != null ? parseFloat(acctTotalPct.toFixed(2)) : '',
+      ...files.map(fd => {
+        const a = fd.accounts.find(a => a.acctNum === acctNum);
+        if (!a) return '';
+        const book = a.snapHoldings.reduce((s,h) => s + h.bookVal, 0);
+        const mkt  = a.snapHoldings.reduce((s,h) => s + h.mktVal, 0);
+        return book !== 0 ? parseFloat(((mkt - book) / book * 100).toFixed(2)) : '';
+      }),
+      ...files.map(fd => {
+        const a = fd.accounts.find(a => a.acctNum === acctNum);
+        if (!a) return '';
+        return a.snapHoldings.reduce((s,h) => s + h.bookVal, 0);
+      }),
+    ]);
+
+    // Blank separator
+    rows.push(Array(header.length).fill(''));
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Format percentage columns
+  const pctCols = [
+    // Total Return % is at index 4 + periods.length + 1
+    4 + periods.length + 1,
+    // % Gain per period columns
+    ...periods.map((_, i) => 4 + periods.length + 2 + i),
+  ];
+
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 36 }, // Account
+    { wch: 32 }, // Holding
+    { wch: 16 }, // Section
+    { wch: 7  }, // Status
+    ...periods.map(() => ({ wch: 18 })), // Market value per period
+    { wch: 14 }, // Total Gain $
+    { wch: 14 }, // Total Return %
+    ...periods.map(() => ({ wch: 14 })), // % Gain per period
+    ...periods.map(() => ({ wch: 16 })), // Book value per period
+  ];
+
+  // Apply number formats to all data rows
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let R = 1; R <= range.e.r; R++) {
+    // Total Return % and per-period % gain columns — format as percentage
+    pctCols.forEach(C => {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      if (ws[addr] && typeof ws[addr].v === 'number') {
+        ws[addr].t = 'n';
+        ws[addr].z = '0.00"%"';
+      }
+    });
+    // Currency columns — market value, book value, total gain
+    const moneyCols = [
+      ...periods.map((_, i) => 4 + i),           // Market value per period
+      4 + periods.length,                          // Total Gain $
+      ...periods.map((_, i) => 4 + periods.length + 2 + periods.length + i), // Book value
+    ];
+    moneyCols.forEach(C => {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      if (ws[addr] && typeof ws[addr].v === 'number') {
+        ws[addr].t = 'n';
+        ws[addr].z = '#,##0.00';
+      }
+    });
+  }
+
+  // Bold header row
+  for (let C = 0; C <= range.e.c; C++) {
+    const addr = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (ws[addr]) { if (!ws[addr].s) ws[addr].s = {}; ws[addr].s.font = { bold: true }; }
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Statement Data');
+  XLSX.writeFile(wb, 'worldsource-data.xlsx');
+}
+
+// ── CSV export
+function exportCSV() {
+  let csv = 'Account,Client,Type,Holding,Section,Book Value,Market Value,Gain,% Gain\n';
+  Object.values(loadedFiles).filter(Boolean).forEach(fd => {
+    fd.accounts.forEach(a => {
+      a.snapHoldings.forEach(h => {
+        csv += `"${a.acctNum}","${a.clientName}","${a.acctType}","${h.name}","${h.section}",` +
+          `${h.bookVal.toFixed(2)},${h.mktVal.toFixed(2)},${h.gain.toFixed(2)},` +
+          `${h.pctGain != null ? h.pctGain.toFixed(2) : ''}\n`;
+      });
+    });
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'worldsource-calculations.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+</script>
+</body>
+</html>
